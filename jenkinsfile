@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_REGISTRY = "halcyon_nahid"
+        APP_NAME = "myapp"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/your-org/myapp.git'
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}-backend ./backend"
+                sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}-frontend ./frontend"
+                sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}-nginx ./nginx"
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh "docker run --rm ${DOCKER_REGISTRY}/${APP_NAME}-backend npm test || true"
+            }
+        }
+
+        stage('Push to Registry') {
+            when {
+                expression { return env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'main' }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                    sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}-backend"
+                    sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}-frontend"
+                    sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}-nginx"
+                }
+            }
+        }
+
+
+    }
+
+    post {
+        always {
+            sh "docker system prune -f"
+        }
+    }
+}
