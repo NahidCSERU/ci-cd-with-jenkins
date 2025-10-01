@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/your-org/myapp.git'
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/NahidCSERU/ci-cd-with-jenkins.git'
             }
         }
 
